@@ -47,9 +47,19 @@ def request_API(url_id):
 		# score might not match exactly with the web UI because the web UI includes "unrated" votes
 		score = f"{malicious}/{total}"
 		# last_final_url may not match original domain if a redirect occured
-		print(f"Requested", resp_data["data"]["attributes"]["last_final_url"],"and received score:", score)
-		
+		print(f"Requested", resp_data["data"]["attributes"]["last_final_url"],"and received score:", score)		
 	return score
+
+# write results to an output file
+def write_outfile(typosquatted_domain_infos, filename):
+	outfile = f"Scored_{filename}"
+	print(f"Writing {outfile} to disk")
+	with open(outfile, 'w', newline='') as csvfile:
+		headers = ["Domain", "Type", "IP", "Virus Total Score"]
+		writer = csv.DictWriter(csvfile, fieldnames=headers, extrasaction='ignore', restval='')
+		writer.writeheader()
+		for info in typosquatted_domain_infos.values():
+			writer.writerow(info)
 
 def main():
 	if len(argv) < 2:
@@ -70,17 +80,6 @@ def main():
 			print(".", end="", flush=True)
 		print()
 	write_outfile(typosquatted_domain_infos, filename)
-
-
-def write_outfile(typosquatted_domain_infos, filename):
-	outfile = f"Scored_{filename}"
-	print(f"Writing {outfile} to disk")
-	with open(outfile, 'w', newline='') as csvfile:
-		headers = ["Domain", "Type", "IP", "Virus Total Score"]
-		writer = csv.DictWriter(csvfile, fieldnames=headers, extrasaction='ignore', restval='')
-		writer.writeheader()
-		for info in typosquatted_domain_infos.values():
-			writer.writerow(info)
 
 
 if __name__ == '__main__':
