@@ -8,13 +8,8 @@ from sys import argv
 
 # global configuration variables
 API_KEY = ""
-vt_endpoint = "https://www.virustotal.com/api/v3/urls/"
+vt_endpoint = "https://www.virustotal.com/api/v3/domains/"
 sleep_time = 20 # b/c restricted to 4 calls per minute on free tier
-
-# base64 encodes urls (VirusTotal requirement)
-def encode_url(url):
-	url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
-	return url_id
 
 # parse domains from csv file
 def parse_inputfile(filename):
@@ -28,10 +23,10 @@ def parse_inputfile(filename):
 	return typosquatted_domain_infos
 
 # query the VirusTotal API for the domain and return the score
-def request_API(url_id):
+def request_API(domain):
 	headers = {"x-apikey": API_KEY}
 	s = requests.session()
-	response = s.get(f"{vt_endpoint}{url_id}",headers=headers)
+	response = s.get(f"{vt_endpoint}{domain}",headers=headers)
 	resp_data = response.json()
 	if not response.ok or "data" not in resp_data:
 		print(f"Something went wrong: {response.status_code} Received")
@@ -40,14 +35,12 @@ def request_API(url_id):
 			print("Please enter a valid API key.")
 			exit(1)
 		score = "N/A"
-		return score
 	else:
 		malicious = resp_data["data"]["attributes"]["last_analysis_stats"]["malicious"]
 		total = resp_data["data"]["attributes"]["last_analysis_stats"]["harmless"] + malicious
 		# score might not match exactly with the web UI because the web UI includes "unrated" votes
 		score = f"{malicious}/{total}"
-		# last_final_url may not match original domain if a redirect occured
-		print(f"Requested", resp_data["data"]["attributes"]["last_final_url"],"and received score:", score)		
+	print(f"Requested", domain,"and received score:", score)		
 	return score
 
 # write results to an output file
@@ -71,8 +64,7 @@ def main():
 	typosquatted_domain_infos = parse_inputfile(filename)
 	print(f"Scoring {len(typosquatted_domain_infos)} domains with Virus Total")
 	for domain, info in typosquatted_domain_infos.items():
-		url_id = encode_url(domain)
-		score = request_API(url_id)
+		score = request_API(domain)
 		typosquatted_domain_infos[domain]["Virus Total Score"] = score
 		print(f"\tsleeping for {sleep_time} seconds", end="")
 		for sec in range(sleep_time):
