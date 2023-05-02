@@ -55,7 +55,11 @@ def write_outfile(typosquatted_domain_infos, filename):
 		writer = csv.DictWriter(csvfile, fieldnames=headers, extrasaction='ignore', restval='')
 		writer.writeheader()
 		for info in typosquatted_domain_infos.values():
-			writer.writerow(info)
+			if info['Virus Total Score'] != 'N/A':
+				writer.writerow(info)
+		for info in typosquatted_domain_infos.values():
+			if info['Virus Total Score'] == 'N/A':
+				writer.writerow(info)
 
 
 def throttle_requests():
@@ -80,11 +84,10 @@ def main():
 			score = request_API(domain)
 			throttle_requests()
 		else:
-			print("Domain is not resolvable, skipping scoring.")
+			print(f"Domain {domain} is not resolvable, skipping scoring.")
 			score = 'N/A'
 		typosquatted_domain_infos[domain]["Virus Total Score"] = score
 		
-
 	write_outfile(typosquatted_domain_infos, filename)
 
 
