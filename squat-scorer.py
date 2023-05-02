@@ -17,8 +17,11 @@ def parse_inputfile(filename):
 	with open(filename) as csvfile:
 		reader = csv.DictReader(csvfile)
 		for row in reader:
-			typosquatted_domain_infos[row["Tweak"]] = row
-			typosquatted_domain_infos[row["Tweak"]]["Domain"] = row["Tweak"]
+			typosquatted_domain_infos[row[" Domain (IDNA)"]] = row
+			typosquatted_domain_infos[row[" Domain (IDNA)"]]["Domain (Unicode)"] = row["Domain (Unicode)"]
+			typosquatted_domain_infos[row[" Domain (IDNA)"]]["Domain (IDNA)"] = row[" Domain (IDNA)"]
+			typosquatted_domain_infos[row[" Domain (IDNA)"]]["IP Address"] = row[" Resolved IP"]
+			typosquatted_domain_infos[row[" Domain (IDNA)"]]["MX Record"] = row[" MX registered"]
 	print(f"Loaded {len(typosquatted_domain_infos)} domains from {filename}")
 	return typosquatted_domain_infos
 
@@ -48,11 +51,20 @@ def write_outfile(typosquatted_domain_infos, filename):
 	outfile = f"Scored_{filename}"
 	print(f"Writing {outfile} to disk")
 	with open(outfile, 'w', newline='') as csvfile:
-		headers = ["Domain", "Type", "IP", "Virus Total Score"]
+		headers = ["Domain (Unicode)","Domain (IDNA)", "IP Address", "MX Record", "Virus Total Score"]
 		writer = csv.DictWriter(csvfile, fieldnames=headers, extrasaction='ignore', restval='')
 		writer.writeheader()
 		for info in typosquatted_domain_infos.values():
 			writer.writerow(info)
+
+
+def throttle_requests():
+	print(f"\tsleeping for {sleep_time} seconds", end="")
+	for sec in range(sleep_time):
+		time.sleep(1.0)
+		print(".", end="", flush=True)
+	print()
+
 
 def main():
 	if len(argv) < 2:
@@ -62,15 +74,17 @@ def main():
 		filename = argv[1]
 
 	typosquatted_domain_infos = parse_inputfile(filename)
-	print(f"Scoring {len(typosquatted_domain_infos)} domains with Virus Total")
+	print(f"Scoring domains with Virus Total")
 	for domain, info in typosquatted_domain_infos.items():
-		score = request_API(domain)
+		if typosquatted_domain_infos[domain]['IP Address'] != '':
+			score = request_API(domain)
+			throttle_requests()
+		else:
+			print("Domain is not resolvable, skipping scoring.")
+			score = 'N/A'
 		typosquatted_domain_infos[domain]["Virus Total Score"] = score
-		print(f"\tsleeping for {sleep_time} seconds", end="")
-		for sec in range(sleep_time):
-			time.sleep(1.0)
-			print(".", end="", flush=True)
-		print()
+		
+
 	write_outfile(typosquatted_domain_infos, filename)
 
 
